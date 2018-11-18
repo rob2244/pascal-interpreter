@@ -8,11 +8,11 @@ import (
 )
 
 type Parser struct {
-	lexer        lexer.Lexer
+	lexer        *lexer.Lexer
 	currentToken *lexer.Token
 }
 
-func NewParser(lexer lexer.Lexer) *Parser {
+func NewParser(lexer *lexer.Lexer) *Parser {
 	token, _ := lexer.GetNextToken()
 	return &Parser{lexer, token}
 }
