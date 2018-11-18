@@ -40,7 +40,7 @@ func (p *Parser) compoundStatement() *ast.Compound {
 	nodes := p.statementList()
 	p.eat(lexer.END)
 
-	root := &ast.Compound{Children: make([]interface{}, 1)}
+	root := &ast.Compound{Children: []interface{}{}}
 
 	for _, node := range nodes {
 		root.Children = append(root.Children, node)

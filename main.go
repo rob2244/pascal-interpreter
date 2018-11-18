@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/rob2244/pascal-interpreter/interpreter"
-	"github.com/rob2244/pascal-interpreter/parser"
-
 	"github.com/rob2244/pascal-interpreter/lexer"
+	"github.com/rob2244/pascal-interpreter/parser"
 )
 
 func main() {
@@ -21,8 +20,8 @@ func main() {
 	     BEGIN
 	         number := 2;
 	         a := number;
-	         b := 10 * a + 10 * number / 4;
-	         c := a - - b
+	         ____ := 10 * a + 10 * number DIV 4;
+	         c := a - - ____
 	     END;
 	
 		x := 11;
@@ -31,8 +30,11 @@ func main() {
 
 	l := lexer.NewLexer(exp)
 	p := parser.NewParser(l)
+
 	i := interpreter.NewInterpreter(p)
 
-	fmt.Println(i.Interpret())
+	i.Interpret()
+	fmt.Println(interpreter.GLOBAL_SCOPE)
+
 	//}
 }

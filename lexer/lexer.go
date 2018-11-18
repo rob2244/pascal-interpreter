@@ -15,6 +15,7 @@ type Lexer struct {
 var reservedKeywords = map[string]*Token{
 	"BEGIN": &Token{BEGIN, "BEGIN"},
 	"END":   &Token{END, "END"},
+	"DIV":   &Token{DIVIDE, "DIV"},
 }
 
 // NONE Represents end of character stream
@@ -30,9 +31,12 @@ func (l *Lexer) GetNextToken() (*Token, error) {
 	for l.currentChar() != NONE {
 		if isWhitespace(l.currentChar()) {
 			l.skipWhitespace()
+			if l.currentChar() == NONE {
+				break
+			}
 		}
 
-		if unicode.IsLetter([]rune(l.currentChar())[0]) {
+		if unicode.IsLetter([]rune(l.currentChar())[0]) || l.currentChar() == "_" {
 			return l.id(), nil
 		}
 
@@ -59,11 +63,6 @@ func (l *Lexer) GetNextToken() (*Token, error) {
 		if l.currentChar() == "*" {
 			l.advance()
 			return &Token{MULTIPLY, l.currentChar()}, nil
-		}
-
-		if l.currentChar() == "/" {
-			l.advance()
-			return &Token{DIVIDE, l.currentChar()}, nil
 		}
 
 		if l.currentChar() == "+" {
@@ -113,12 +112,14 @@ func (l *Lexer) integer() string {
 func (l *Lexer) id() *Token {
 	result := strings.Builder{}
 
-	for char := l.currentChar(); char != NONE && isAlphaNumeric(char); char = l.currentChar() {
+	for char := l.currentChar(); char != NONE && (isAlphaNumeric(char) || char == "_"); char = l.currentChar() {
 		result.WriteString(char)
 		l.pos++
 	}
 
-	val, ok := reservedKeywords[result.String()]
+	key := strings.ToUpper(result.String())
+
+	val, ok := reservedKeywords[key]
 
 	if ok {
 		return val
@@ -132,7 +133,7 @@ func (l *Lexer) skipWhitespace() {
 		return
 	}
 
-	for ; l.currentChar() == " "; l.pos++ {
+	for ; isWhitespace(l.currentChar()); l.pos++ {
 
 	}
 }
@@ -156,5 +157,5 @@ func isAlphaNumeric(s string) bool {
 }
 
 func isWhitespace(s string) bool {
-	return s == " "
+	return s == " " || s == "\n" || s == "\t"
 }
