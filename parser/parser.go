@@ -27,12 +27,79 @@ func (p *Parser) Parse() (*ast.Compound, error) {
 	return node, nil
 }
 
-func (p *Parser) program() *ast.Compound {
-	node := p.compoundStatement()
+func (p *Parser) program() *ast.Program {
+	p.eat(lexer.PROGRAM)
+
+	varNode := p.variable()
+	progName := varNode.Value()
+
+	p.eat(lexer.SEMI)
+
+	block := p.block()
+	progNode := &ast.Program{progName, block}
 
 	p.eat(lexer.DOT)
+	return progNode
+}
 
-	return node
+func (p *Parser) block() *ast.Block {
+	decNodes := p.declarations()
+	compStmnt := p.compoundStatement()
+
+	return &ast.Block{decNodes, compStmnt}
+}
+
+func (p *Parser) declarations() []*ast.VarDecl {
+	results := []*ast.VarDecl{}
+
+	if p.currentToken.Type == lexer.VAR {
+		p.eat(lexer.VAR)
+
+		for p.currentToken.Type == lexer.ID {
+			varDecl := p.variableDeclaration()
+			results = append(results, varDecl...)
+			p.eat(lexer.SEMI)
+		}
+	}
+
+	return results
+}
+
+func (p *Parser) variableDeclaration() []*ast.VarDecl {
+	varNodes := []*ast.Var{&ast.Var{p.currentToken}}
+	varDecls := []*ast.VarDecl{}
+
+	p.eat(lexer.ID)
+
+	for p.currentToken.Type == lexer.COMMA {
+		p.eat(lexer.COMMA)
+		varNodes = append(varNodes, &ast.Var{p.currentToken})
+		p.eat(lexer.ID)
+	}
+
+	p.eat(lexer.COLON)
+
+	typeNode := p.typeSpec()
+
+	for _, v := range varNodes {
+		varDecls = append(varDecls, &ast.VarDecl{v, typeNode})
+	}
+
+	return varDecls
+}
+
+func (p *Parser) typeSpec() *ast.Type {
+	token := p.currentToken
+
+	if token.Type == lexer.INTEGER {
+		p.eat(lexer.INTEGER)
+	}
+
+	if token.Type == lexer.REAL {
+		p.eat(lexer.REAL)
+	}
+
+	return ast.NewType(token)
 }
 
 func (p *Parser) compoundStatement() *ast.Compound {
@@ -121,15 +188,22 @@ func (p *Parser) expr() interface{} {
 func (p *Parser) term() interface{} {
 	node := p.factor()
 
-	for p.currentToken.Type == lexer.MULTIPLY || p.currentToken.Type == lexer.DIVIDE {
+	for p.currentToken.Type == lexer.MULTIPLY ||
+		p.currentToken.Type == lexer.INTEGERDIV ||
+		p.currentToken.Type == lexer.FLOATDIV {
+
 		token := p.currentToken
 
 		if token.Type == lexer.MULTIPLY {
 			p.eat(lexer.MULTIPLY)
 		}
 
-		if token.Type == lexer.DIVIDE {
-			p.eat(lexer.DIVIDE)
+		if token.Type == lexer.INTEGERDIV {
+			p.eat(lexer.INTEGERDIV)
+		}
+
+		if token.Type == lexer.FLOATDIV {
+			p.eat(lexer.INTEGERDIV)
 		}
 
 		node = ast.NewBinOp(token, node, p.factor())
@@ -151,8 +225,13 @@ func (p *Parser) factor() interface{} {
 		return &ast.UnaryOp{Token: token, Expr: p.factor()}
 	}
 
-	if p.currentToken.Type == lexer.INTEGER {
-		p.eat(lexer.INTEGER)
+	if p.currentToken.Type == lexer.INTEGERCONST {
+		p.eat(lexer.INTEGERCONST)
+		return ast.NewNum(token)
+	}
+
+	if p.currentToken.Type == lexer.REALCONST {
+		p.eat(lexer.REALCONST)
 		return ast.NewNum(token)
 	}
 

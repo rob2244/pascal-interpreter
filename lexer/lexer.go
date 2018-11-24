@@ -13,9 +13,13 @@ type Lexer struct {
 }
 
 var reservedKeywords = map[string]*Token{
-	"BEGIN": &Token{BEGIN, "BEGIN"},
-	"END":   &Token{END, "END"},
-	"DIV":   &Token{DIVIDE, "DIV"},
+	"PROGRAM": &Token{PROGRAM, "PROGRAM"},
+	"VAR":     &Token{VAR, "VAR"},
+	"DIV":     &Token{INTEGERDIV, "DIV"},
+	"INTEGER": &Token{INTEGER, "INTEGER"},
+	"REAL":    &Token{REAL, "REAL"},
+	"BEGIN":   &Token{BEGIN, "BEGIN"},
+	"END":     &Token{END, "END"},
 }
 
 // NONE Represents end of character stream
@@ -36,12 +40,18 @@ func (l *Lexer) GetNextToken() (*Token, error) {
 			}
 		}
 
+		if l.currentChar() == "{" {
+			l.advance()
+			l.skipComment()
+			continue
+		}
+
 		if unicode.IsLetter([]rune(l.currentChar())[0]) || l.currentChar() == "_" {
 			return l.id(), nil
 		}
 
 		if unicode.IsDigit([]rune(l.currentChar())[0]) {
-			return &Token{INTEGER, l.integer()}, nil
+			return l.number(), nil
 		}
 
 		if l.currentChar() == ":" && l.peek() == "=" {
@@ -50,9 +60,24 @@ func (l *Lexer) GetNextToken() (*Token, error) {
 			return &Token{ASSIGN, ":="}, nil
 		}
 
+		if l.currentChar() == ":" {
+			l.advance()
+			return &Token{COLON, ":"}, nil
+		}
+
+		if l.currentChar() == "," {
+			l.advance()
+			return &Token{COMMA, ","}, nil
+		}
+
 		if l.currentChar() == ";" {
 			l.advance()
 			return &Token{SEMI, ";"}, nil
+		}
+
+		if l.currentChar() == "/" {
+			l.advance()
+			return &Token{FLOATDIV, "/"}, nil
 		}
 
 		if l.currentChar() == "." {
@@ -99,14 +124,25 @@ func (l *Lexer) currentChar() string {
 	return string(l.text[l.pos])
 }
 
-func (l *Lexer) integer() string {
+func (l *Lexer) number() *Token {
 	var numString string
 
 	for ; l.pos < len(l.text) && unicode.IsDigit([]rune(l.currentChar())[0]); l.pos++ {
 		numString += string(l.currentChar())
 	}
 
-	return numString
+	if currentChar := l.currentChar(); currentChar == "." {
+		numString += currentChar
+
+		for l.currentChar() != NONE && unicode.IsDigit([]rune(l.currentChar())[0]) {
+			numString += string(l.currentChar())
+			l.advance()
+		}
+
+		return &Token{REALCONST, numString}
+	}
+
+	return &Token{INTEGERCONST, numString}
 }
 
 func (l *Lexer) id() *Token {
@@ -138,6 +174,18 @@ func (l *Lexer) skipWhitespace() {
 	}
 }
 
+func isWhitespace(s string) bool {
+	return s == " " || s == "\n" || s == "\t"
+}
+
+func (l *Lexer) skipComment() {
+	for l.currentChar() != "}" {
+		l.advance()
+	}
+
+	l.advance()
+}
+
 func (l *Lexer) peek() string {
 	pos := l.pos + 1
 	if pos > len(l.text)-1 {
@@ -154,8 +202,4 @@ func (l *Lexer) advance() {
 func isAlphaNumeric(s string) bool {
 	r := []rune(s)[0]
 	return unicode.IsNumber(r) || unicode.IsLetter(r)
-}
-
-func isWhitespace(s string) bool {
-	return s == " " || s == "\n" || s == "\t"
 }
